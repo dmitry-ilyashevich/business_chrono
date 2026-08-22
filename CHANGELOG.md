@@ -1,6 +1,11 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.2.0] - 2026-08-22
+
+### 🐛 Bug Fixes
+
+- *(errors)* Correct way to deal with errors using thiserror
 ## [0.1.0] - 2026-08-16
 
 ### 🚀 Features
@@ -41,3 +46,4 @@ All notable changes to this project will be documented in this file.
 - Correct crate keywords
 - Rename crate
 - Fixed formatting
+- *(release)* V0.1.0
