@@ -1271,7 +1271,7 @@ impl fmt::Display for Country {
 }
 
 impl FromStr for Country {
-    type Err = anyhow::Error;
+    type Err = crate::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -1480,7 +1480,7 @@ impl FromStr for Country {
             "ZM" => Ok(Country::ZM),
             "ZW" => Ok(Country::ZW),
 
-            other => Err(anyhow::anyhow!("Unknown country code: {other}")),
+            other => Err(crate::Error::UnknownCountryCode(other.to_string())),
         }
     }
 }

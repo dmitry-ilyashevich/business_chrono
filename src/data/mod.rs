@@ -5,9 +5,9 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
-use anyhow::Result;
 use chrono::NaiveDate;
 
+use crate::Result;
 use crate::country::Country;
 use crate::holiday::{Holiday, HolidayPerYearMap, Year, from_ymd_res};
 
@@ -1238,10 +1238,7 @@ pub fn build(country: Country, years: Option<&Range<Year>>) -> Result<HolidayPer
         Country::ZW => zw::build(years),
 
         #[allow(unreachable_patterns)]
-        other => anyhow::bail!(
-            "Country {other:?} is not supported. Please enable the `{}` cargo feature.",
-            other.code().to_ascii_uppercase()
-        ),
+        other => Err(crate::Error::UnsupportedCountry { country: other }),
     }
 }
 

@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 use std::ops::{Range, RangeInclusive};
 
-use anyhow::{Context, Result, bail};
 use chrono::{Datelike, NaiveDate, Weekday};
 
+use crate::Result;
 use crate::country::Country;
+use crate::error::Error;
 use crate::holiday::{Holiday, Year};
 
 /// Business-day calendar for one country.
@@ -39,7 +40,7 @@ impl Calendar {
 
         let (Some(&first_year), Some(&last_year)) = (per_year.keys().min(), per_year.keys().max())
         else {
-            bail!("No holidays found for country {country:?} in the requested years");
+            return Err(Error::NoHolidays { country });
         };
 
         Ok(Self {
@@ -88,16 +89,17 @@ impl Calendar {
         let end = end.unwrap_or_else(|| chrono::Local::now().naive_local().date());
 
         if start > end {
-            bail!("start date {start} is after end date {end}");
+            return Err(Error::StartAfterEnd { start, end });
         }
 
         if !self.covered_years().contains(&start.year())
             || !self.covered_years().contains(&end.year())
         {
-            bail!(
-                "date range {start} to {end} is not fully within covered years {:?}",
-                self.covered_years()
-            );
+            return Err(Error::RangeNotCovered {
+                start,
+                end,
+                covered: self.covered_years(),
+            });
         }
 
         let mut count = 0;
@@ -106,7 +108,7 @@ impl Calendar {
             if self.is_business_day(day) {
                 count += 1;
             }
-            day = day.succ_opt().context("date out of range")?;
+            day = day.succ_opt().ok_or(Error::DateOverflow)?;
         }
 
         Ok(count)
@@ -117,7 +119,7 @@ impl Calendar {
     /// Returns an error if the date is not within [`covered_years()`](Self::covered_years).
     pub fn roll_forward(&self, mut day: NaiveDate) -> Result<NaiveDate> {
         while !self.is_business_day(day) {
-            day = day.succ_opt().context("date out of range")?;
+            day = day.succ_opt().ok_or(Error::DateOverflow)?;
         }
         Ok(day)
     }
@@ -127,7 +129,7 @@ impl Calendar {
     /// Returns an error if the date is not within [`covered_years()`](Self::covered_years).
     pub fn roll_backward(&self, mut day: NaiveDate) -> Result<NaiveDate> {
         while !self.is_business_day(day) {
-            day = day.pred_opt().context("date out of range")?;
+            day = day.pred_opt().ok_or(Error::DateOverflow)?;
         }
         Ok(day)
     }
@@ -139,16 +141,16 @@ impl Calendar {
         let start_business_day = self.roll_forward(start)?;
 
         if !self.covered_years().contains(&start_business_day.year()) {
-            bail!(
-                "start date {start_business_day} is not within covered years {:?}",
-                self.covered_years()
-            );
+            return Err(Error::DateNotCovered {
+                date: start_business_day,
+                covered: self.covered_years(),
+            });
         }
 
         let mut count = 0;
         let mut day = start_business_day;
         while count < days {
-            day = day.succ_opt().context("date out of range")?;
+            day = day.succ_opt().ok_or(Error::DateOverflow)?;
             if self.is_business_day(day) {
                 count += 1;
             }
@@ -164,16 +166,16 @@ impl Calendar {
         let start_business_day = self.roll_backward(start)?;
 
         if !self.covered_years().contains(&start_business_day.year()) {
-            bail!(
-                "start_business_day date {start_business_day} is not within covered years {:?}",
-                self.covered_years()
-            );
+            return Err(Error::DateNotCovered {
+                date: start_business_day,
+                covered: self.covered_years(),
+            });
         }
 
         let mut count = 0;
         let mut day = start_business_day;
         while count < days {
-            day = day.pred_opt().context("date out of range")?;
+            day = day.pred_opt().ok_or(Error::DateOverflow)?;
 
             if self.is_business_day(day) {
                 count += 1;

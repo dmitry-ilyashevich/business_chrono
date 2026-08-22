@@ -17,7 +17,6 @@ pub struct Holiday {
 pub type HolidayPerYearMap = HashMap<Year, BTreeMap<NaiveDate, Holiday>>;
 
 /// Convert year, month, day to NaiveDate, returning an error if the date is invalid.
-pub(crate) fn from_ymd_res(year: Year, month: u32, day: u32) -> anyhow::Result<NaiveDate> {
-    NaiveDate::from_ymd_opt(year, month, day)
-        .ok_or_else(|| anyhow::anyhow!("invalid date: {year}-{month:02}-{day:02}"))
+pub(crate) fn from_ymd_res(year: Year, month: u32, day: u32) -> crate::Result<NaiveDate> {
+    NaiveDate::from_ymd_opt(year, month, day).ok_or(crate::Error::InvalidDate { year, month, day })
 }

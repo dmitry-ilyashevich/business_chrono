@@ -13,8 +13,8 @@ members = [".", "builder"]
 resolver = "3"
 
 [dependencies]
-anyhow = "1.0.104"
 chrono = "0.4.45"
+thiserror = "2.0.20"
 
 [features]
 # This section is auto-generated. Do not edit manually.

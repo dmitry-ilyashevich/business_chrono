@@ -50,13 +50,13 @@ impl fmt::Display for Country {
 }
 
 impl FromStr for Country {
-    type Err = anyhow::Error;
+    type Err = crate::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
 {% for country in countries %}            "{{ country.countryCode }}" => Ok(Country::{{ country.countryCode }}),
 {% endfor %}
-            other => Err(anyhow::anyhow!("Unknown country code: {other}")),
+            other => Err(crate::Error::UnknownCountryCode(other.to_string())),
         }
     }
 }
