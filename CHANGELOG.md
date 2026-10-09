@@ -1,11 +1,20 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.2.1] - 2026-10-09
+
+### ⚙️ Miscellaneous Tasks
+
+- *(doc)* Fix small issues in examples
 ## [0.2.0] - 2026-08-22
 
 ### 🐛 Bug Fixes
 
 - *(errors)* Correct way to deal with errors using thiserror
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.2.0
 ## [0.1.0] - 2026-08-16
 
 ### 🚀 Features
