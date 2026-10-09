@@ -4,6 +4,12 @@
 
 Rust library with embedded public-holiday data for >200 countries, generated from the [nagerholidays.com](https://nagerholidays.com/) API, years 2000..=2031 (this range can be changed).
 
+## Installation
+
+```sh
+cargo add business_chrono
+```
+
 ## Usage
 
 ```rust
@@ -22,7 +28,7 @@ cal.business_chrono_between(date, None)?;    // business days from `date` throug
 The `roll_forward` and `roll_backward` methods snap a date to a nearby business day. If provided with a business day, they will return that date. Otherwise, they will advance (forward for roll_forward and backward for roll_backward) until a business day is found.
 
 ```rust
-cal.roll_forward(date)                     // 2026-02-02
+cal.roll_forward(date)                     // 2026-01-02
 cal.roll_backward(date)                    // 2025-12-31
 
 ```
@@ -52,7 +58,7 @@ Only nationwide public holidays are included (regional and Bank/School/ Observan
 Each country is behind a cargo feature named after its lowercase ISO code (`ua`, `us`, `de`, ...). The default `all` feature enables every country; to compile only what you need:
 
 ```toml
-business_chrono = { version = "0.1", default-features = false, features = ["ua", "pl"] }
+business_chrono = { version = "0.2", default-features = false, features = ["ua", "pl"] }
 ```
 
 ## Regenerating the data
@@ -61,14 +67,14 @@ business_chrono = { version = "0.1", default-features = false, features = ["ua",
 
 ```sh
 cargo run -p builder                       # fetch missing years, regenerate everything
-cargo run -p builder -- --refresh          # also re-fetch current & future years
+cargo run -p builder -- --force            # also re-fetch current & future years
 cargo run -p builder -- --countries UA,PL  # limit to specific countries
 cargo run -p builder -- --end-year 2033    # extend the horizon (default: current year + 5)
 cargo run -p builder -- --start-year 1995  # extend the horizon (default: 2000)
 cargo run -p builder -- --help             # print help with all possible arguments
 ```
 
-Run `--refresh` once a year to pick up the next future year and any upstream corrections, then review the diff and commit.
+Run `--force` once a year to pick up the next future year and any upstream corrections, then review the diff and commit.
 
 ## Need a different year range?
 
