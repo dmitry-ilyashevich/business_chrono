@@ -6,6 +6,7 @@ use crate::country::Country;
 
 pub type Year = i32;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Holiday {
     pub date: NaiveDate,
     pub country: Country,

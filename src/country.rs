@@ -3,6 +3,7 @@
 use std::fmt;
 use std::str::FromStr;
 
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Country {
     /// Andorra
@@ -1274,7 +1275,7 @@ impl FromStr for Country {
     type Err = crate::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.trim().to_uppercase().as_str() {
             "AD" => Ok(Country::AD),
             "AG" => Ok(Country::AG),
             "AI" => Ok(Country::AI),
