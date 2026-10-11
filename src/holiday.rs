@@ -15,7 +15,8 @@ pub struct Holiday {
     pub name_en: &'static str,
 }
 
-pub type HolidayPerYearMap = HashMap<Year, BTreeMap<NaiveDate, Holiday>>;
+/// Holidays per year, keyed by date. Several holidays can share one date.
+pub type HolidayPerYearMap = HashMap<Year, BTreeMap<NaiveDate, Vec<Holiday>>>;
 
 /// Convert year, month, day to NaiveDate, returning an error if the date is invalid.
 pub(crate) fn from_ymd_res(year: Year, month: u32, day: u32) -> crate::Result<NaiveDate> {

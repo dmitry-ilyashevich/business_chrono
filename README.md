@@ -22,6 +22,7 @@ let date = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
 cal.is_holiday(date);                      // true - New Year's Day
 cal.is_business_day(date);                 // false
 cal.holiday(date);                         // Some(&Holiday { name: "Новий Рік", name_en: "New Year's Day", ... })
+cal.holidays(date);                        // &[Holiday] - every holiday on that date (several can share one)
 cal.business_days_between(date, None)?;    // business days from `date` through today, inclusive
 ```
 
@@ -49,8 +50,8 @@ The raw per-year data is also available:
 ```rust
 use business_chrono::{build, Country};
 
-let map = build(Country::UA, Some(&(2020..2031)))?; // HashMap<Year, BTreeMap<NaiveDate, Holiday>>
-let holidays_2026 = &map[&2026];
+let map = build(Country::UA, Some(&(2020..2031)))?; // HashMap<Year, BTreeMap<NaiveDate, Vec<Holiday>>>
+let holidays_2026 = &map[&2026];            // date -> all holidays on that date
 ```
 
 Only nationwide public holidays are included (regional and Bank/School/ Observance entries are filtered out). Each holiday carries its name in the country's local language (`Holiday::name`) and in English (`Holiday::name_en`).

@@ -247,3 +247,23 @@ fn roll_backward_to_next_business_day() {
         date(2026, 1, 2)
     );
 }
+
+#[test]
+#[cfg(feature = "za")]
+fn holidays_sharing_a_date_are_all_kept() {
+    let cal = Calendar::new(Country::ZA).unwrap();
+
+    // 2008-03-21 was both Human Rights Day and Good Friday
+    let day = date(2008, 3, 21);
+    let names: Vec<_> = cal.holidays(day).iter().map(|h| h.name_en).collect();
+    assert_eq!(names, ["Human Rights Day", "Good Friday"]);
+    assert!(cal.holidays(day).iter().all(|h| h.date == day));
+
+    assert!(cal.is_holiday(day));
+    assert_eq!(cal.holiday(day), cal.holidays(day).first());
+
+    // a single holiday and a plain working day
+    assert_eq!(cal.holidays(date(2008, 1, 1)).len(), 1);
+    assert!(cal.holidays(date(2008, 1, 2)).is_empty());
+    assert!(cal.holiday(date(2008, 1, 2)).is_none());
+}

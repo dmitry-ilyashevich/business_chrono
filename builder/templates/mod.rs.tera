@@ -41,22 +41,14 @@ pub fn build_year<const N: usize>(
         return;
     }
 
-    map.insert(
-        year,
-        holidays
-            .into_iter()
-            .map(|(date, name, name_en)| {
-                (
-                    date,
-                    Holiday {
-                        date,
-                        country,
-                        country_name,
-                        name,
-                        name_en,
-                    },
-                )
-            })
-            .collect(),
-    );
+    let by_date = map.entry(year).or_default();
+    for (date, name, name_en) in holidays {
+        by_date.entry(date).or_default().push(Holiday {
+            date,
+            country,
+            country_name,
+            name,
+            name_en,
+        });
+    }
 }

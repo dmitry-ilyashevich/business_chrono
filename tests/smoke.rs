@@ -6,7 +6,9 @@ use chrono::NaiveDate;
 fn ua_new_year_2026() {
     let map = build(Country::UA, None).unwrap();
     let date = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
-    let holiday = &map[&2026][&date];
+    let holidays = &map[&2026][&date];
+    assert_eq!(holidays.len(), 1);
+    let holiday = &holidays[0];
 
     assert_eq!(holiday.name, "Новий Рік");
     assert_eq!(holiday.name_en, "New Year's Day");
@@ -46,4 +48,13 @@ fn country_roundtrip() {
 
     assert!(Country::ALL.contains(&country));
     assert!("XX".parse::<Country>().is_err());
+}
+
+#[test]
+#[cfg(feature = "za")]
+fn duplicate_dates_are_kept_in_raw_map() {
+    let map = build(Country::ZA, None).unwrap();
+    let date = NaiveDate::from_ymd_opt(2008, 3, 21).unwrap();
+
+    assert_eq!(map[&2008][&date].len(), 2);
 }

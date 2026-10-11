@@ -22,7 +22,7 @@ use crate::holiday::{Holiday, Year};
 pub struct Calendar {
     country: Country,
     weekend: &'static [Weekday],
-    holidays: BTreeMap<NaiveDate, Holiday>,
+    holidays: BTreeMap<NaiveDate, Vec<Holiday>>,
     years: RangeInclusive<Year>,
 }
 
@@ -44,10 +44,15 @@ impl Calendar {
             return Err(Error::NoHolidays { country });
         };
 
+        let mut holidays: BTreeMap<NaiveDate, Vec<Holiday>> = BTreeMap::new();
+        for (date, same_day) in per_year.into_values().flatten() {
+            holidays.entry(date).or_default().extend(same_day);
+        }
+
         Ok(Self {
             country,
             weekend: country.weekend(),
-            holidays: per_year.into_values().flatten().collect(),
+            holidays,
             years: first_year..=last_year,
         })
     }
@@ -63,8 +68,16 @@ impl Calendar {
     }
 
     /// Get the holiday for a given date, if it exists.
+    ///
+    /// When several holidays share the date this returns the first one;
+    /// use [`holidays()`](Self::holidays) to get all of them.
     pub fn holiday(&self, date: NaiveDate) -> Option<&Holiday> {
-        self.holidays.get(&date)
+        self.holidays(date).first()
+    }
+
+    /// Get all holidays for a given date (empty if the date is not a holiday).
+    pub fn holidays(&self, date: NaiveDate) -> &[Holiday] {
+        self.holidays.get(&date).map_or(&[], Vec::as_slice)
     }
 
     /// Check if a given date is a holiday.
