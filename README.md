@@ -26,6 +26,8 @@ cal.holidays(date);                        // &[Holiday] - every holiday on that
 cal.business_days_between(date, None)?;    // business days from `date` through today, inclusive
 ```
 
+All date arithmetic is limited to the years the calendar has data for (`cal.covered_years()`): a date, range or result outside of them is an error rather than a guess made without holiday data.
+
 The `roll_forward` and `roll_backward` methods snap a date to a nearby business day. If provided with a business day, they will return that date. Otherwise, they will advance (forward for roll_forward and backward for roll_backward) until a business day is found.
 
 ```rust
@@ -34,7 +36,7 @@ cal.roll_backward(date)                    // 2025-12-31
 
 ```
 
-The `add_business_days` and `subtract_business_days` are used to perform business day arithmetic on dates. Note: methods calls `roll_forward`/`roll_backward` first.
+The `add_business_days` and `subtract_business_days` are used to perform business day arithmetic on dates. Note: methods calls `roll_forward`/`roll_backward` first, and return an error if the result falls outside `covered_years()`.
 
 ```rust
 cal.add_business_days(date, 0)             // 2026-01-02: rolls forward to Jan 2 Fri

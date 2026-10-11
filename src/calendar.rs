@@ -156,52 +156,41 @@ impl Calendar {
 
     /// Add a number of business days to a given start date.
     ///
-    /// Returns an error if the start date is not within [`covered_years()`](Self::covered_years).
+    /// The start date is rolled forward to a business day first. Returns an
+    /// error if the start date or the result is not within
+    /// [`covered_years()`](Self::covered_years).
     pub fn add_business_days(&self, start: NaiveDate, days: u32) -> Result<NaiveDate> {
-        let start_business_day = self.roll_forward(start)?;
+        let mut day = self.roll_forward(start)?;
+        let mut remaining = days;
 
-        if !self.covered_years().contains(&start_business_day.year()) {
-            return Err(Error::DateNotCovered {
-                date: start_business_day,
-                covered: self.covered_years(),
-            });
-        }
-
-        let mut count = 0;
-        let mut day = start_business_day;
-        while count < days {
+        while remaining > 0 {
             day = day.succ_opt().ok_or(Error::DateOverflow)?;
             if self.is_business_day(day) {
-                count += 1;
+                remaining -= 1;
             }
         }
 
+        self.ensure_covered(day)?;
         Ok(day)
     }
 
     /// Subtract a number of business days from a given start date.
     ///
-    /// Returns an error if the start date is not within [`covered_years()`](Self::covered_years).
+    /// The start date is rolled backward to a business day first. Returns an
+    /// error if the start date or the result is not within
+    /// [`covered_years()`](Self::covered_years).
     pub fn subtract_business_days(&self, start: NaiveDate, days: u32) -> Result<NaiveDate> {
-        let start_business_day = self.roll_backward(start)?;
+        let mut day = self.roll_backward(start)?;
+        let mut remaining = days;
 
-        if !self.covered_years().contains(&start_business_day.year()) {
-            return Err(Error::DateNotCovered {
-                date: start_business_day,
-                covered: self.covered_years(),
-            });
-        }
-
-        let mut count = 0;
-        let mut day = start_business_day;
-        while count < days {
+        while remaining > 0 {
             day = day.pred_opt().ok_or(Error::DateOverflow)?;
-
             if self.is_business_day(day) {
-                count += 1;
+                remaining -= 1;
             }
         }
 
+        self.ensure_covered(day)?;
         Ok(day)
     }
 

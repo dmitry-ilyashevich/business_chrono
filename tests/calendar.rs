@@ -292,3 +292,27 @@ fn roll_errors_outside_coverage() {
         date(2000, 1, 3)
     );
 }
+
+#[test]
+#[cfg(feature = "ua")]
+fn add_subtract_error_when_result_leaves_coverage() {
+    let cal = Calendar::with_years(Country::UA, 2020..2022).unwrap();
+
+    assert!(cal.add_business_days(date(2020, 1, 2), 100).is_ok());
+    assert!(matches!(
+        cal.add_business_days(date(2021, 6, 1), 300),
+        Err(Error::DateNotCovered { .. })
+    ));
+    assert!(matches!(
+        cal.add_business_days(date(2021, 12, 30), 5),
+        Err(Error::DateNotCovered { .. })
+    ));
+    assert!(matches!(
+        cal.subtract_business_days(date(2020, 6, 1), 300),
+        Err(Error::DateNotCovered { .. })
+    ));
+    assert!(matches!(
+        cal.subtract_business_days(date(2020, 1, 3), 5),
+        Err(Error::DateNotCovered { .. })
+    ));
+}
