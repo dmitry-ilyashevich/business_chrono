@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-use business_chrono::{Calendar, Country};
+use business_chrono::{Calendar, Country, Error};
 use chrono::{NaiveDate, Weekday};
 
 #[allow(dead_code)]
@@ -266,4 +266,29 @@ fn holidays_sharing_a_date_are_all_kept() {
     assert_eq!(cal.holidays(date(2008, 1, 1)).len(), 1);
     assert!(cal.holidays(date(2008, 1, 2)).is_empty());
     assert!(cal.holiday(date(2008, 1, 2)).is_none());
+}
+
+#[test]
+#[cfg(feature = "us")]
+fn roll_errors_outside_coverage() {
+    let cal = Calendar::new(Country::US).unwrap();
+
+    assert!(matches!(
+        cal.roll_forward(date(1999, 1, 1)),
+        Err(Error::DateNotCovered { .. })
+    ));
+    assert!(matches!(
+        cal.roll_backward(date(2090, 1, 1)),
+        Err(Error::DateNotCovered { .. })
+    ));
+
+    // 2000-01-01 is a Saturday: rolling backward leaves the covered years
+    assert!(matches!(
+        cal.roll_backward(date(2000, 1, 1)),
+        Err(Error::DateNotCovered { date: d, .. }) if d < date(2000, 1, 1)
+    ));
+    assert_eq!(
+        cal.roll_forward(date(2000, 1, 1)).unwrap(),
+        date(2000, 1, 3)
+    );
 }

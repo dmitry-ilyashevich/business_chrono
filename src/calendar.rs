@@ -130,21 +130,27 @@ impl Calendar {
 
     /// Roll a date forward to the next business day.
     ///
-    /// Returns an error if the date is not within [`covered_years()`](Self::covered_years).
+    /// Returns an error if the date or the resulting business day is not
+    /// within [`covered_years()`](Self::covered_years).
     pub fn roll_forward(&self, mut day: NaiveDate) -> Result<NaiveDate> {
+        self.ensure_covered(day)?;
         while !self.is_business_day(day) {
             day = day.succ_opt().ok_or(Error::DateOverflow)?;
         }
+        self.ensure_covered(day)?;
         Ok(day)
     }
 
     /// Roll a date backward to the previous business day.
     ///
-    /// Returns an error if the date is not within [`covered_years()`](Self::covered_years).
+    /// Returns an error if the date or the resulting business day is not
+    /// within [`covered_years()`](Self::covered_years).
     pub fn roll_backward(&self, mut day: NaiveDate) -> Result<NaiveDate> {
+        self.ensure_covered(day)?;
         while !self.is_business_day(day) {
             day = day.pred_opt().ok_or(Error::DateOverflow)?;
         }
+        self.ensure_covered(day)?;
         Ok(day)
     }
 
@@ -197,5 +203,16 @@ impl Calendar {
         }
 
         Ok(day)
+    }
+
+    fn ensure_covered(&self, date: NaiveDate) -> Result<()> {
+        if self.years.contains(&date.year()) {
+            Ok(())
+        } else {
+            Err(Error::DateNotCovered {
+                date,
+                covered: self.covered_years(),
+            })
+        }
     }
 }
