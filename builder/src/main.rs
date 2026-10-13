@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs;
+use std::ops::RangeInclusive;
 use std::path::Path;
 use std::process::Command;
 use std::thread::sleep;
@@ -100,6 +101,10 @@ fn main() -> Result<()> {
     let current_year = chrono::Utc::now().year() as u32;
     let end_year = args.end_year.unwrap_or(current_year + FUTURE_YEARS);
     let start_year = args.start_year.unwrap_or(START_YEAR);
+    if start_year > end_year {
+        bail!("Start year {start_year} is after end year {end_year}");
+    }
+    let years = start_year..=end_year;
 
     // Fetch countries info
     for country in &countries_to_fetch {
@@ -112,7 +117,7 @@ fn main() -> Result<()> {
         let dir = cache.join(&country.country_code);
         fs::create_dir_all(&dir).context("Failed to create cache directory")?;
         let (mut fetched, mut cached) = (0u32, 0u32);
-        for year in start_year..=end_year {
+        for year in years.clone() {
             let path = dir.join(format!("{year}.json"));
             if path.exists() && !args.force {
                 cached += 1;
@@ -161,19 +166,10 @@ fn main() -> Result<()> {
     let data_dir = root_dir.join("src/data");
     fs::create_dir_all(&data_dir).context("Failed to create data directory")?;
 
-    let mut generated = 0u32;
-    for country in &countries {
-        if let Some(selected_countries) = &args.countries
-            && !selected_countries.contains(&country.country_code)
-        {
-            continue;
-        }
-
-        if generate_country(&cache, &data_dir, country)? {
-            generated += 1;
-        }
+    for country in &countries_to_fetch {
+        generate_country(&cache, &data_dir, country, &years)?;
     }
-    println!("Generated data for {generated} countries");
+    println!("Generated data for {} countries", countries_to_fetch.len());
 
     generate_country_enums(builder_dir, &src_dir, &countries_to_fetch, &week_data)
         .context("Failed to generate enums")?;
@@ -334,14 +330,20 @@ fn get_with_retry(url: &str) -> Result<Option<String>> {
 }
 
 // Generate Rust code for a specific country based on cached holiday data.
-fn generate_country(cache: &Path, data_dir: &Path, country: &CountryInfo) -> Result<bool> {
+//
+// Fails when no year in `years` is cached: the country enum, `mod.rs` and the
+// cargo features all reference this country's module, so skipping it silently
+// would produce a crate that does not compile.
+fn generate_country(
+    cache: &Path,
+    data_dir: &Path,
+    country: &CountryInfo,
+    years: &RangeInclusive<u32>,
+) -> Result<()> {
     let dir = cache.join(&country.country_code);
-    if !dir.exists() {
-        return Ok(false);
-    }
 
     let mut holidays_by_year = BTreeMap::new();
-    for year in START_YEAR..=chrono::Utc::now().year() as u32 + FUTURE_YEARS {
+    for year in years.clone() {
         let path = dir.join(format!("{year}.json"));
         if !path.exists() {
             continue;
@@ -375,7 +377,12 @@ fn generate_country(cache: &Path, data_dir: &Path, country: &CountryInfo) -> Res
     }
 
     if holidays_by_year.is_empty() {
-        return Ok(false);
+        bail!(
+            "No cached holiday data for {} in {}..={} (did fetching fail?)",
+            country.country_code,
+            years.start(),
+            years.end()
+        );
     }
 
     let output_path = data_dir.join(format!("{}.rs", country.country_code.to_lowercase()));
@@ -436,7 +443,7 @@ fn generate_country(cache: &Path, data_dir: &Path, country: &CountryInfo) -> Res
         )
     })?;
 
-    Ok(true)
+    Ok(())
 }
 
 fn parse_date(date_str: &str) -> Result<(u32, u32, u32)> {

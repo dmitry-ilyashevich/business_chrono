@@ -73,7 +73,7 @@ cargo run -p builder                       # fetch missing years, regenerate eve
 cargo run -p builder -- --force            # also re-fetch current & future years
 cargo run -p builder -- --countries UA,PL  # limit to specific countries
 cargo run -p builder -- --end-year 2033    # extend the horizon (default: current year + 5)
-cargo run -p builder -- --start-year 1995  # extend the horizon (default: 2000)
+cargo run -p builder -- --start-year 1995  # start earlier (default: 2000)
 cargo run -p builder -- --help             # print help with all possible arguments
 ```
 
