@@ -48,6 +48,9 @@ fn country_roundtrip() {
 
     assert!(Country::ALL.contains(&country));
     assert!("XX".parse::<Country>().is_err());
+
+    assert_eq!("us".parse::<Country>().unwrap(), Country::US);
+    assert_eq!(" Us\n".parse::<Country>().unwrap(), Country::US);
 }
 
 #[test]

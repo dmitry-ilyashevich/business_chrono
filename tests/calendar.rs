@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
 use business_chrono::{Calendar, Country, Error};
+#[allow(unused_imports)]
 use chrono::{NaiveDate, Weekday};
 
 #[allow(dead_code)]
@@ -55,7 +56,7 @@ fn us_business_chrono() {
 
 #[test]
 #[cfg(feature = "us")]
-fn ua_count_between() {
+fn us_count_between() {
     let cal = Calendar::new(Country::US).unwrap();
 
     // Jan 1 Thu = holiday, Jan 2 Fri = work, Jan 3/4 = weekend, Jan 5-7 = work
@@ -71,6 +72,25 @@ fn ua_count_between() {
             .unwrap(),
         1
     );
+
+    // single non-working days
+    assert_eq!(
+        cal.business_days_between(date(2026, 1, 1), date(2026, 1, 1))
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        cal.business_days_between(date(2026, 1, 3), date(2026, 1, 4))
+            .unwrap(),
+        0
+    );
+
+    // Jul 4 2026 is a Saturday: a holiday on a weekend is not subtracted twice
+    assert_eq!(
+        cal.business_days_between(date(2026, 7, 4), date(2026, 7, 6))
+            .unwrap(),
+        1
+    );
 }
 
 #[test]
@@ -78,18 +98,18 @@ fn ua_count_between() {
 fn count_errors() {
     let cal = Calendar::new(Country::US).unwrap();
 
-    assert!(
-        cal.business_days_between(date(2026, 1, 7), date(2026, 1, 1))
-            .is_err()
-    );
-    assert!(
-        cal.business_days_between(date(1999, 1, 1), date(2026, 1, 1))
-            .is_err()
-    );
-    assert!(
-        cal.business_days_between(date(2026, 1, 1), date(2090, 1, 1))
-            .is_err()
-    );
+    assert!(matches!(
+        cal.business_days_between(date(2026, 1, 7), date(2026, 1, 1)),
+        Err(Error::StartAfterEnd { .. })
+    ));
+    assert!(matches!(
+        cal.business_days_between(date(1999, 1, 1), date(2026, 1, 1)),
+        Err(Error::RangeNotCovered { .. })
+    ));
+    assert!(matches!(
+        cal.business_days_between(date(2026, 1, 1), date(2090, 1, 1)),
+        Err(Error::RangeNotCovered { .. })
+    ));
 }
 
 #[test]
@@ -165,7 +185,7 @@ fn add_business_days() {
 
 #[test]
 #[cfg(feature = "us")]
-fn substract_business_chrono() {
+fn subtract_business_days() {
     let cal = Calendar::new(Country::US).unwrap();
 
     // Jan 1 Thu = New Year, Jan 2 Fri = work, Jan 3/4 = weekend, Jan 5-7 = work
@@ -240,7 +260,6 @@ fn roll_backward_to_next_business_day() {
         date(2026, 1, 2)
     );
 }
-
 #[test]
 #[cfg(feature = "za")]
 fn holidays_sharing_a_date_are_all_kept() {
@@ -312,6 +331,35 @@ fn add_subtract_error_when_result_leaves_coverage() {
     assert!(
         cal.subtract_business_days(date(2021, 6, 1), u32::MAX)
             .is_err()
+    );
+}
+
+#[test]
+#[cfg(feature = "eg")]
+fn egypt_add_subtract_with_fri_sat_weekend() {
+    let cal = Calendar::new(Country::EG).unwrap();
+
+    // Jul 1 Wed = work, Jul 2 Thu = holiday, Jul 3/4 Fri/Sat = weekend, Jul 5 Sun = work
+    assert_eq!(
+        cal.add_business_days(date(2026, 7, 1), 1).unwrap(),
+        date(2026, 7, 5)
+    );
+    assert_eq!(
+        cal.add_business_days(date(2026, 7, 3), 0).unwrap(),
+        date(2026, 7, 5)
+    );
+    assert_eq!(
+        cal.subtract_business_days(date(2026, 7, 5), 1).unwrap(),
+        date(2026, 7, 1)
+    );
+    assert_eq!(
+        cal.subtract_business_days(date(2026, 7, 4), 0).unwrap(),
+        date(2026, 7, 1)
+    );
+    assert_eq!(
+        cal.business_days_between(date(2026, 7, 1), date(2026, 7, 5))
+            .unwrap(),
+        2
     );
 }
 
