@@ -60,31 +60,17 @@ fn ua_count_between() {
 
     // Jan 1 Thu = holiday, Jan 2 Fri = work, Jan 3/4 = weekend, Jan 5-7 = work
     assert_eq!(
-        cal.business_days_between(date(2026, 1, 1), Some(date(2026, 1, 7)))
+        cal.business_days_between(date(2026, 1, 1), date(2026, 1, 7))
             .unwrap(),
         4
     );
 
     // single working day, inclusive on both ends
     assert_eq!(
-        cal.business_days_between(date(2026, 1, 2), Some(date(2026, 1, 2)))
+        cal.business_days_between(date(2026, 1, 2), date(2026, 1, 2))
             .unwrap(),
         1
     );
-}
-
-#[test]
-#[cfg(feature = "ua")]
-fn count_defaults_to_today() {
-    let cal = Calendar::new(Country::UA).unwrap();
-
-    let today = chrono::Local::now().date_naive();
-    let year_ago = today - chrono::Duration::days(365);
-
-    let explicit = cal.business_days_between(year_ago, Some(today)).unwrap();
-    let implicit = cal.business_days_between(year_ago, None).unwrap();
-
-    assert_eq!(explicit, implicit);
 }
 
 #[test]
@@ -93,15 +79,15 @@ fn count_errors() {
     let cal = Calendar::new(Country::US).unwrap();
 
     assert!(
-        cal.business_days_between(date(2026, 1, 7), Some(date(2026, 1, 1)))
+        cal.business_days_between(date(2026, 1, 7), date(2026, 1, 1))
             .is_err()
     );
     assert!(
-        cal.business_days_between(date(1999, 1, 1), Some(date(2026, 1, 1)))
+        cal.business_days_between(date(1999, 1, 1), date(2026, 1, 1))
             .is_err()
     );
     assert!(
-        cal.business_days_between(date(2026, 1, 1), Some(date(2090, 1, 1)))
+        cal.business_days_between(date(2026, 1, 1), date(2090, 1, 1))
             .is_err()
     );
 }
@@ -111,7 +97,14 @@ fn count_errors() {
 fn with_years_restricts_coverage() {
     let cal = Calendar::with_years(Country::UA, 2020..2022).unwrap();
     assert_eq!(cal.covered_years(), 2020..=2021);
-    assert!(cal.business_days_between(date(2022, 1, 1), None).is_err());
+    assert!(
+        cal.business_days_between(date(2021, 12, 1), date(2021, 12, 31))
+            .is_ok()
+    );
+    assert!(
+        cal.business_days_between(date(2021, 12, 1), date(2022, 1, 1))
+            .is_err()
+    );
 }
 
 #[test]

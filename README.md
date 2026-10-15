@@ -23,7 +23,8 @@ cal.is_holiday(date);                      // true - New Year's Day
 cal.is_business_day(date);                 // false
 cal.holiday(date);                         // Some(&Holiday { name: "Новий Рік", name_en: "New Year's Day", ... })
 cal.holidays(date);                        // &[Holiday] - every holiday on that date (several can share one)
-cal.business_days_between(date, None)?;    // business days from `date` through today, inclusive
+cal.business_days_between(date, end)?;     // business days from `date` through `end`, inclusive
+cal.business_days_until_today(date)?;      // same, through today (local time)
 ```
 
 All date arithmetic is limited to the years the calendar has data for (`cal.covered_years()`): a date, range or result outside of them is an error rather than a guess made without holiday data.

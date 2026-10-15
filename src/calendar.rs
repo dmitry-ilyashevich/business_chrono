@@ -97,11 +97,9 @@ impl Calendar {
 
     /// Number of business days from `start` to `end`, inclusive.
     ///
-    /// `end` defaults to today if not provided. Returns an error if
-    /// `start` is after `end` or the range is not fully within [`covered_years()`](Self::covered_years).
-    pub fn business_days_between(&self, start: NaiveDate, end: Option<NaiveDate>) -> Result<u32> {
-        let end = end.unwrap_or_else(|| chrono::Local::now().naive_local().date());
-
+    /// Returns an error if `start` is after `end` or the range is not fully
+    /// within [`covered_years()`](Self::covered_years).
+    pub fn business_days_between(&self, start: NaiveDate, end: NaiveDate) -> Result<u32> {
         if start > end {
             return Err(Error::StartAfterEnd { start, end });
         }
@@ -126,6 +124,13 @@ impl Calendar {
         }
 
         Ok(count)
+    }
+
+    /// Number of business days from `start` through today (local time), inclusive.
+    ///
+    /// Same errors as [`business_days_between()`](Self::business_days_between).
+    pub fn business_days_until_today(&self, start: NaiveDate) -> Result<u32> {
+        self.business_days_between(start, chrono::Local::now().date_naive())
     }
 
     /// Roll a date forward to the next business day.
