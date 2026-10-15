@@ -57,4 +57,9 @@ fn duplicate_dates_are_kept_in_raw_map() {
     let date = NaiveDate::from_ymd_opt(2008, 3, 21).unwrap();
 
     assert_eq!(map[&2008][&date].len(), 2);
+
+    // years iterate in order, without gaps
+    let years: Vec<_> = map.keys().copied().collect();
+    assert_eq!(years.first(), Some(&2000));
+    assert!(years.windows(2).all(|pair| pair[1] == pair[0] + 1));
 }

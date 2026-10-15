@@ -40,7 +40,8 @@ impl Calendar {
     pub fn build(country: Country, years: Option<&Range<Year>>) -> Result<Self> {
         let per_year = crate::data::build(country, years)?;
 
-        let (Some(&first_year), Some(&last_year)) = (per_year.keys().min(), per_year.keys().max())
+        let (Some(&first_year), Some(&last_year)) =
+            (per_year.keys().next(), per_year.keys().next_back())
         else {
             return Err(Error::NoHolidays { country });
         };

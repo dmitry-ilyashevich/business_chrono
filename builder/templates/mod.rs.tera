@@ -2,7 +2,7 @@
 
 #![allow(unused_imports)]
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ops::Range;
 
 use chrono::NaiveDate;

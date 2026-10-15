@@ -53,7 +53,7 @@ The raw per-year data is also available:
 ```rust
 use business_chrono::{build, Country};
 
-let map = build(Country::UA, Some(&(2020..2031)))?; // HashMap<Year, BTreeMap<NaiveDate, Vec<Holiday>>>
+let map = build(Country::UA, Some(&(2020..2031)))?; // BTreeMap<Year, BTreeMap<NaiveDate, Vec<Holiday>>>
 let holidays_2026 = &map[&2026];            // date -> all holidays on that date
 ```
 

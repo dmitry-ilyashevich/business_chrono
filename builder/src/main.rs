@@ -393,7 +393,7 @@ fn generate_country(
     output.push_str("// This file is auto-generated. Do not edit manually.\n\n");
     output.push_str("use super::*;\n\n");
     output.push_str("pub fn build(years: Option<&Range<Year>>) -> Result<HolidayPerYearMap> {\n");
-    output.push_str("    let mut map = HashMap::new();\n\n");
+    output.push_str("    let mut map = BTreeMap::new();\n\n");
 
     for (year, holidays) in &holidays_by_year {
         output.push_str("    build_year(\n");

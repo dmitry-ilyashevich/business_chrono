@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use chrono::NaiveDate;
 
@@ -16,7 +16,7 @@ pub struct Holiday {
 }
 
 /// Holidays per year, keyed by date. Several holidays can share one date.
-pub type HolidayPerYearMap = HashMap<Year, BTreeMap<NaiveDate, Vec<Holiday>>>;
+pub type HolidayPerYearMap = BTreeMap<Year, BTreeMap<NaiveDate, Vec<Holiday>>>;
 
 /// Convert year, month, day to NaiveDate, returning an error if the date is invalid.
 pub(crate) fn from_ymd_res(year: Year, month: u32, day: u32) -> crate::Result<NaiveDate> {

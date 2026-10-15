@@ -5,7 +5,7 @@
 use super::*;
 
 pub fn build(years: Option<&Range<Year>>) -> Result<HolidayPerYearMap> {
-    let mut map = HashMap::new();
+    let mut map = BTreeMap::new();
 
     build_year(
         years,
