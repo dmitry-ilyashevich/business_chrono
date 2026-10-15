@@ -21,7 +21,8 @@ use crate::holiday::{Holiday, Year};
 #[derive(Debug, Clone)]
 pub struct Calendar {
     country: Country,
-    weekend: &'static [Weekday],
+    /// Bit `n` is set when the weekday `n` days after Monday is a rest day.
+    weekend_mask: u8,
     holidays: BTreeMap<NaiveDate, Vec<Holiday>>,
     years: RangeInclusive<Year>,
 }
@@ -51,7 +52,10 @@ impl Calendar {
 
         Ok(Self {
             country,
-            weekend: country.weekend(),
+            weekend_mask: country
+                .weekend()
+                .iter()
+                .fold(0, |mask, day| mask | weekday_bit(*day)),
             holidays,
             years: first_year..=last_year,
         })
@@ -87,7 +91,7 @@ impl Calendar {
 
     /// Check if a given date is a weekend day.
     pub fn is_weekend(&self, date: NaiveDate) -> bool {
-        self.weekend.contains(&date.weekday())
+        self.weekend_mask & weekday_bit(date.weekday()) != 0
     }
 
     /// Check if a given date is a business day (not a holiday and not a weekend).
@@ -239,7 +243,7 @@ impl Calendar {
     }
 
     fn business_days_per_week(&self) -> u32 {
-        7 - self.weekend.len() as u32
+        7 - self.weekend_mask.count_ones()
     }
 
     /// Number of holiday dates in `range` that do not fall on a weekend.
@@ -249,4 +253,8 @@ impl Calendar {
             .filter(|(date, _)| !self.is_weekend(**date))
             .count() as u32
     }
+}
+
+fn weekday_bit(day: Weekday) -> u8 {
+    1 << day.num_days_from_monday()
 }
