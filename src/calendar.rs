@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
-use std::ops::{Range, RangeInclusive};
+use std::ops::{Bound, Range, RangeInclusive};
 
-use chrono::{Datelike, NaiveDate, Weekday};
+use chrono::{Datelike, Days, NaiveDate, Weekday};
 
 use crate::Result;
 use crate::country::Country;
@@ -104,9 +104,7 @@ impl Calendar {
             return Err(Error::StartAfterEnd { start, end });
         }
 
-        if !self.covered_years().contains(&start.year())
-            || !self.covered_years().contains(&end.year())
-        {
+        if !self.years.contains(&start.year()) || !self.years.contains(&end.year()) {
             return Err(Error::RangeNotCovered {
                 start,
                 end,
@@ -114,16 +112,17 @@ impl Calendar {
             });
         }
 
-        let mut count = 0;
+        let total_days = (end - start).num_days() as u32 + 1;
+        let mut count = total_days / 7 * self.business_days_per_week();
         let mut day = start;
-        while day <= end {
-            if self.is_business_day(day) {
+        for _ in 0..total_days % 7 {
+            if !self.is_weekend(day) {
                 count += 1;
             }
             day = day.succ_opt().ok_or(Error::DateOverflow)?;
         }
 
-        Ok(count)
+        Ok(count - self.weekday_holidays((Bound::Included(start), Bound::Included(end))))
     }
 
     /// Number of business days from `start` through today (local time), inclusive.
@@ -168,6 +167,21 @@ impl Calendar {
         let mut day = self.roll_forward(start)?;
         let mut remaining = days;
 
+        // Jump whole weeks, always leaving at least one day to step, so the
+        // result is found by the loop below and is a business day.
+        let per_week = self.business_days_per_week();
+        while remaining > per_week {
+            let weeks = (remaining - 1) / per_week;
+            let target = day
+                .checked_add_days(Days::new(u64::from(weeks) * 7))
+                .ok_or(Error::DateOverflow)?;
+            self.ensure_covered(target)?;
+
+            let skipped = self.weekday_holidays((Bound::Excluded(day), Bound::Included(target)));
+            remaining -= weeks * per_week - skipped;
+            day = target;
+        }
+
         while remaining > 0 {
             day = day.succ_opt().ok_or(Error::DateOverflow)?;
             if self.is_business_day(day) {
@@ -187,6 +201,20 @@ impl Calendar {
     pub fn subtract_business_days(&self, start: NaiveDate, days: u32) -> Result<NaiveDate> {
         let mut day = self.roll_backward(start)?;
         let mut remaining = days;
+
+        // Mirror of the week jumps in `add_business_days`.
+        let per_week = self.business_days_per_week();
+        while remaining > per_week {
+            let weeks = (remaining - 1) / per_week;
+            let target = day
+                .checked_sub_days(Days::new(u64::from(weeks) * 7))
+                .ok_or(Error::DateOverflow)?;
+            self.ensure_covered(target)?;
+
+            let skipped = self.weekday_holidays((Bound::Included(target), Bound::Excluded(day)));
+            remaining -= weeks * per_week - skipped;
+            day = target;
+        }
 
         while remaining > 0 {
             day = day.pred_opt().ok_or(Error::DateOverflow)?;
@@ -208,5 +236,17 @@ impl Calendar {
                 covered: self.covered_years(),
             })
         }
+    }
+
+    fn business_days_per_week(&self) -> u32 {
+        7 - self.weekend.len() as u32
+    }
+
+    /// Number of holiday dates in `range` that do not fall on a weekend.
+    fn weekday_holidays(&self, range: (Bound<NaiveDate>, Bound<NaiveDate>)) -> u32 {
+        self.holidays
+            .range(range)
+            .filter(|(date, _)| !self.is_weekend(**date))
+            .count() as u32
     }
 }

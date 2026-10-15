@@ -308,4 +308,62 @@ fn add_subtract_error_when_result_leaves_coverage() {
         cal.subtract_business_days(date(2020, 1, 3), 5),
         Err(Error::DateNotCovered { .. })
     ));
+    assert!(cal.add_business_days(date(2021, 6, 1), u32::MAX).is_err());
+    assert!(
+        cal.subtract_business_days(date(2021, 6, 1), u32::MAX)
+            .is_err()
+    );
+}
+
+/// Counting, adding and subtracting must agree with a plain day-by-day walk
+/// for Sat/Sun, Fri/Sat and Sun-only weekends.
+#[test]
+#[cfg(all(feature = "us", feature = "eg", feature = "ug", feature = "za"))]
+fn arithmetic_matches_day_by_day_walk() {
+    for country in [Country::US, Country::EG, Country::UG, Country::ZA] {
+        let cal = Calendar::new(country).unwrap();
+
+        for offset in (0..400).step_by(13) {
+            let start = date(2024, 1, 1) + chrono::Days::new(offset);
+
+            let mut day = start;
+            let mut count = 0;
+            for span in 0..800 {
+                if cal.is_business_day(day) {
+                    count += 1;
+                }
+                assert_eq!(
+                    cal.business_days_between(start, day).unwrap(),
+                    count,
+                    "{country} {start}..={day} ({span} days)"
+                );
+                day = day.succ_opt().unwrap();
+            }
+
+            let forward_start = cal.roll_forward(start).unwrap();
+            let backward_start = cal.roll_backward(start).unwrap();
+            let (mut forward, mut backward) = (forward_start, backward_start);
+            for days in 0..600 {
+                assert_eq!(
+                    cal.add_business_days(start, days).unwrap(),
+                    forward,
+                    "{country} {start} + {days}"
+                );
+                assert_eq!(
+                    cal.subtract_business_days(start, days).unwrap(),
+                    backward,
+                    "{country} {start} - {days}"
+                );
+
+                forward = forward.succ_opt().unwrap();
+                while !cal.is_business_day(forward) {
+                    forward = forward.succ_opt().unwrap();
+                }
+                backward = backward.pred_opt().unwrap();
+                while !cal.is_business_day(backward) {
+                    backward = backward.pred_opt().unwrap();
+                }
+            }
+        }
+    }
 }
