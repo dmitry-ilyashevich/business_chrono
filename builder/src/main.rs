@@ -285,48 +285,42 @@ fn is_retryable_status(status: reqwest::StatusCode) -> bool {
 }
 
 fn should_retry(error: &reqwest::Error) -> bool {
-    if error.is_timeout() || error.is_connect() || error.is_request() {
-        return true;
-    }
-
-    if let Some(status) = error.status() {
-        return is_retryable_status(status);
-    }
-
-    false
+    error.is_timeout() || error.is_connect()
 }
 
 fn get_with_retry(url: &str) -> Result<Option<String>> {
     let mut delay = Duration::from_secs(1);
 
     for attempt in 1..=MAX_RETRIES {
-        match reqwest::blocking::get(url) {
-            Ok(response) if response.status() == reqwest::StatusCode::NO_CONTENT => {
-                return Ok(None);
-            }
-
-            Ok(response) => return Ok(Some(response.text()?)),
-
-            Err(e) => {
-                if attempt == MAX_RETRIES || !should_retry(&e) {
-                    return Err(anyhow::anyhow!(
-                        "Request to {} failed after {} attempts: {}",
-                        url,
-                        MAX_RETRIES,
-                        e
-                    ));
+        // HTTP error statuses are not `Err` here, so they are classified by hand.
+        let error = match reqwest::blocking::get(url) {
+            Ok(response) => {
+                let status = response.status();
+                if status == reqwest::StatusCode::NO_CONTENT {
+                    return Ok(None);
                 }
-
-                eprintln!("Retrying {} failed with: {}", url, e);
-                sleep(delay);
-                delay *= 2; // Exponential backoff
+                if status.is_success() {
+                    return Ok(Some(response.text()?));
+                }
+                if !is_retryable_status(status) {
+                    bail!("Request to {url} failed with status {status}");
+                }
+                anyhow::anyhow!("status {status}")
             }
+            Err(e) if should_retry(&e) => e.into(),
+            Err(e) => bail!("Request to {url} failed: {e}"),
+        };
+
+        if attempt == MAX_RETRIES {
+            bail!("Request to {url} failed after {MAX_RETRIES} attempts: {error}");
         }
 
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        eprintln!("Retrying {url} after: {error}");
+        sleep(delay);
+        delay *= 2; // Exponential backoff
     }
 
-    Ok(None)
+    unreachable!("the last attempt either returns or bails")
 }
 
 // Generate Rust code for a specific country based on cached holiday data.
