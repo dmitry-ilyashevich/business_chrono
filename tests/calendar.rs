@@ -448,3 +448,30 @@ fn arithmetic_matches_day_by_day_walk() {
         }
     }
 }
+
+#[test]
+#[cfg(feature = "us")]
+fn business_days_until_today_ends_today() {
+    let cal = Calendar::new(Country::US).unwrap();
+
+    // Retry if the clock crosses midnight between reading "today" and the call.
+    loop {
+        let today = chrono::Local::now().date_naive();
+        let start = today - chrono::Days::new(30);
+        let until_today = cal.business_days_until_today(start);
+        let tomorrow = cal.business_days_until_today(today + chrono::Days::new(1));
+        if chrono::Local::now().date_naive() != today {
+            continue;
+        }
+
+        // Stays valid after the embedded data stops covering the current year.
+        match cal.business_days_between(start, today) {
+            Ok(expected) => {
+                assert_eq!(until_today.unwrap(), expected);
+                assert!(matches!(tomorrow, Err(Error::StartAfterEnd { .. })));
+            }
+            Err(_) => assert!(matches!(until_today, Err(Error::RangeNotCovered { .. }))),
+        }
+        break;
+    }
+}
