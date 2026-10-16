@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use business_chrono::{Calendar, Country, Error};
 #[allow(unused_imports)]
-use chrono::{NaiveDate, Weekday};
+use chrono::{Datelike, NaiveDate, Weekday};
 
 #[allow(dead_code)]
 fn date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -14,7 +14,12 @@ fn pl_business_chrono() {
     let cal = Calendar::new(Country::PL).unwrap();
 
     assert!(Calendar::with_years(Country::PL, 2020..2025).is_ok());
-    assert!(Calendar::with_years(Country::PL, 3000..3100).is_err());
+    assert!(matches!(
+        Calendar::with_years(Country::PL, 3000..3100),
+        Err(Error::NoHolidays {
+            country: Country::PL
+        })
+    ));
 
     assert!(cal.is_holiday(date(2026, 1, 1))); // New Year's Day
     assert!(cal.is_holiday(date(2026, 5, 1))); // Labor Day
@@ -37,7 +42,12 @@ fn us_business_chrono() {
     assert_eq!(cal.country(), Country::US);
 
     assert!(Calendar::with_years(Country::US, 2020..2025).is_ok());
-    assert!(Calendar::with_years(Country::US, 3000..3100).is_err());
+    assert!(matches!(
+        Calendar::with_years(Country::US, 3000..3100),
+        Err(Error::NoHolidays {
+            country: Country::US
+        })
+    ));
 
     assert!(cal.is_holiday(date(2026, 7, 3))); // Independence Day 
     assert!(!cal.is_business_day(date(2026, 7, 3))); // Independence Day
@@ -121,10 +131,10 @@ fn with_years_restricts_coverage() {
         cal.business_days_between(date(2021, 12, 1), date(2021, 12, 31))
             .is_ok()
     );
-    assert!(
-        cal.business_days_between(date(2021, 12, 1), date(2022, 1, 1))
-            .is_err()
-    );
+    assert!(matches!(
+        cal.business_days_between(date(2021, 12, 1), date(2022, 1, 1)),
+        Err(Error::RangeNotCovered { .. })
+    ));
 }
 
 #[test]
@@ -180,7 +190,10 @@ fn add_business_days() {
         date(2026, 1, 7)
     );
 
-    assert!(cal.add_business_days(date(1999, 1, 1), 1).is_err());
+    assert!(matches!(
+        cal.add_business_days(date(1999, 1, 1), 1),
+        Err(Error::DateNotCovered { .. })
+    ));
 }
 
 #[test]
@@ -210,7 +223,10 @@ fn subtract_business_days() {
         date(2025, 12, 31)
     );
 
-    assert!(cal.subtract_business_days(date(2090, 1, 1), 0).is_err());
+    assert!(matches!(
+        cal.subtract_business_days(date(2090, 1, 1), 0),
+        Err(Error::DateNotCovered { .. })
+    ));
 }
 
 #[test]
@@ -302,6 +318,23 @@ fn roll_errors_outside_coverage() {
     assert_eq!(
         cal.roll_forward(date(2000, 1, 1)).unwrap(),
         date(2000, 1, 3)
+    );
+}
+
+#[test]
+#[cfg(feature = "ua")]
+fn roll_forward_errors_when_result_leaves_coverage() {
+    let cal = Calendar::with_years(Country::UA, 2020..2023).unwrap();
+
+    // 2022-12-31 is a Saturday in the last covered year: the next business
+    // day is in 2023, which has no holiday data
+    assert!(matches!(
+        cal.roll_forward(date(2022, 12, 31)),
+        Err(Error::DateNotCovered { date: d, .. }) if d.year() == 2023
+    ));
+    assert_eq!(
+        cal.roll_backward(date(2022, 12, 31)).unwrap(),
+        date(2022, 12, 30)
     );
 }
 
