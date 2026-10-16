@@ -454,7 +454,9 @@ fn parse_date(date_str: &str) -> Result<(u32, u32, u32)> {
 }
 
 fn rustfmt_file(path: &Path) -> Result<()> {
+    // Must match the crate edition: the generated code uses let chains.
     let status = Command::new("rustfmt")
+        .args(["--edition", "2024"])
         .arg(path)
         .status()
         .context("Failed to run rustfmt")?;
