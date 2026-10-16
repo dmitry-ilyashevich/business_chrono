@@ -1,6 +1,37 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.3.0] - 2026-10-16
+
+### 🐛 Bug Fixes
+
+- *(api)* Fixed api design for methods business_chrono_between, add_business_chrono, subtract_business_chrono
+- *(calendar)* [**breaking**] Keep all holidays sharing a date and add Calendar::holidays()
+- *(calendar)* Return DateNotCovered from roll_forward/roll_backward outside covered years
+- *(calendar)* Return DateNotCovered when add/subtract_business_days result leaves covered years
+- *(builder)* Fail when a country has no cached data instead of emitting a non-compiling crate
+- *(api)* [**breaking**] Require explicit end date in business_days_between, add business_days_until_today
+- *(builder)* Do not retry non-retryable HTTP statuses and drop the extra sleep between retries
+- *(builder)* Run rustfmt with edition 2024 on generated files
+
+### 🚜 Refactor
+
+- *(data)* [**breaking**] Use BTreeMap for HolidayPerYearMap for deterministic year order
+
+### ⚡ Performance
+
+- *(calendar)* Count business days arithmetically and jump whole weeks in add/subtract
+- *(calendar)* Store weekend as a bitmask
+
+### 🧪 Testing
+
+- Fix misnamed tests, cover Fri/Sat weekend arithmetic and case-insensitive country parsing
+- Check data consistency for all contries, assert exact error variants
+- *(calendar)* Cover business_days_until_today without depending on the current date
+
+### ⚙️ Miscellaneous Tasks
+
+- *(config)* Fix Git cliff config for release notes
 ## [0.2.1] - 2026-10-09
 
 ### ⚙️ Miscellaneous Tasks
@@ -11,10 +42,6 @@ All notable changes to this project will be documented in this file.
 ### 🐛 Bug Fixes
 
 - *(errors)* Correct way to deal with errors using thiserror
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V0.2.0
 ## [0.1.0] - 2026-08-16
 
 ### 🚀 Features
@@ -55,4 +82,3 @@ All notable changes to this project will be documented in this file.
 - Correct crate keywords
 - Rename crate
 - Fixed formatting
-- *(release)* V0.1.0
