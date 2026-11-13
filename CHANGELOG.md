@@ -1,6 +1,11 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.3.1] - 2026-11-13
+
+### 📚 Documentation
+
+- *(readme)* Document full API surface and fix stale examples
 ## [0.3.0] - 2026-10-16
 
 ### 🐛 Bug Fixes
