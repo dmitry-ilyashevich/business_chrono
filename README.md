@@ -2,13 +2,24 @@
 
 [![CI](https://github.com/dmitry-ilyashevich/business_chrono/actions/workflows/ci.yml/badge.svg)](https://github.com/dmitry-ilyashevich/business_chrono/actions/workflows/ci.yml)
 
-Rust library with embedded public-holiday data for >200 countries, generated from the [nagerholidays.com](https://nagerholidays.com/) API, years 2000..=2031 (this range can be changed).
+Rust library with embedded public-holiday data for 204 countries, generated from the [nagerholidays.com](https://nagerholidays.com/) API. The embedded data covers years 2000 through generation year + 5 (currently 2000..=2031); the range can be changed by regenerating the data (see below).
 
 ## Installation
 
 ```sh
 cargo add business_chrono
+cargo add chrono
 ```
+
+The API works with `chrono::NaiveDate`, so you need `chrono` as a direct dependency too:
+
+```toml
+[dependencies]
+business_chrono = "0.3.1"
+chrono = "0.4"
+```
+
+Requires Rust 1.85+ (edition 2024).
 
 ## Usage
 
@@ -18,10 +29,14 @@ use chrono::NaiveDate;
 
 let cal = Calendar::new(Country::UA).unwrap();
 let date = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
+let end = NaiveDate::from_ymd_opt(2026, 1, 31).unwrap();
 
+cal.country();                             // Country::UA
+cal.covered_years();                       // 2000..=2031
 cal.is_holiday(date);                      // true - New Year's Day
+cal.is_weekend(date);                      // false (Thursday)
 cal.is_business_day(date);                 // false
-cal.holiday(date);                         // Some(&Holiday { name: "Новий Рік", name_en: "New Year's Day", ... })
+cal.holiday(date);                         // Some(&Holiday { name: "Новий Рік", name_en: "New Year's Day", .. })
 cal.holidays(date);                        // &[Holiday] - every holiday on that date (several can share one)
 cal.business_days_between(date, end)?;     // business days from `date` through `end`, inclusive
 cal.business_days_until_today(date)?;      // same, through today (local time)
@@ -29,12 +44,18 @@ cal.business_days_until_today(date)?;      // same, through today (local time)
 
 All date arithmetic is limited to the years the calendar has data for (`cal.covered_years()`): a date, range or result outside of them is an error rather than a guess made without holiday data.
 
+To narrow the covered years, use `Calendar::with_years` (or `Calendar::build` with an explicit range):
+
+```rust
+let cal = Calendar::with_years(Country::UA, 2020..2023).unwrap();
+cal.covered_years();                       // 2020..=2022
+```
+
 The `roll_forward` and `roll_backward` methods snap a date to a nearby business day. If provided with a business day, they will return that date. Otherwise, they will advance (forward for roll_forward and backward for roll_backward) until a business day is found.
 
 ```rust
 cal.roll_forward(date)                     // 2026-01-02
 cal.roll_backward(date)                    // 2025-12-31
-
 ```
 
 The `add_business_days` and `subtract_business_days` are used to perform business day arithmetic on dates. Note: methods calls `roll_forward`/`roll_backward` first, and return an error if the result falls outside `covered_years()`.
@@ -46,7 +67,7 @@ cal.add_business_days(date, 1)             // 2026-01-05: rolls to Jan 2 Fri, th
 cal.subtract_business_days(date, 0)        // 2025-12-31: rolls backward to Dec 31 Thu
 ```
 
-Weekly rest days come from Unicode CLDR week data and differ per country (Sat/Sun for most, Fri/Sat for Egypt or Algeria, Sun for Uganda, etc.); see `Country::weekend()`. Observed/substitute days ("holiday falls on a weekend -> next workday is off") are already encoded in the upstream data as separate dates, so the calendar does no shifting of its own.
+Weekly rest days come from Unicode CLDR week data and differ per country: Sat/Sun for most, Fri/Sat for Bahrain, Algeria, Egypt, Iraq, Libya, Sudan, Syria and Yemen, Sun only for Uganda; see `Country::weekend()`. Observed/substitute days ("holiday falls on a weekend -> next workday is off") are already encoded in the upstream data as separate dates, so the calendar does no shifting of its own.
 
 The raw per-year data is also available:
 
@@ -57,13 +78,52 @@ let map = build(Country::UA, Some(&(2020..2031)))?; // BTreeMap<Year, BTreeMap<N
 let holidays_2026 = &map[&2026];            // date -> all holidays on that date
 ```
 
-Only nationwide public holidays are included (regional and Bank/School/ Observance entries are filtered out). Each holiday carries its name in the country's local language (`Holiday::name`) and in English (`Holiday::name_en`).
+`build` returns an empty map if the requested range contains no data (`Calendar::with_years` turns that case into `Error::NoHolidays`), and `Error::UnsupportedCountry` if the country's cargo feature is disabled (see below).
+
+Only nationwide public holidays are included (regional and Bank/School/Observance entries are filtered out). Each `Holiday` has public fields: `date`, `country`, `country_name`, `name` (in the country's local language) and `name_en` (English).
+
+## Countries
+
+`Country` is an enum of all 204 supported ISO 3166-1 alpha-2 codes, with a few helpers:
+
+```rust
+use business_chrono::Country;
+
+let ua: Country = "ua".parse().unwrap();  // parsing is case-insensitive and trims whitespace
+ua.code();                                // "UA"
+ua.name();                                // "Ukraine"
+ua.to_string();                           // "UA" (Display)
+ua.weekend();                             // &[Weekday::Sat, Weekday::Sun]
+
+Country::ALL;                             // [Country; 204] - every supported country
+```
+
+## Features
 
 Each country is behind a cargo feature named after its lowercase ISO code (`ua`, `us`, `de`, ...). The default `all` feature enables every country; to compile only what you need:
 
 ```toml
-business_chrono = { version = "0.2", default-features = false, features = ["ua", "pl"] }
+business_chrono = { version = "0.3.1", default-features = false, features = ["ua", "pl"] }
 ```
+
+Using a country whose feature is disabled returns `Error::UnsupportedCountry`, and the error message names the feature to enable.
+
+## Errors
+
+All fallible methods return `business_chrono::Error`:
+
+| Variant                                   | Meaning                                                               |
+| ----------------------------------------- | --------------------------------------------------------------------- |
+| `UnsupportedCountry { country }`          | the country's cargo feature is disabled                               |
+| `NoHolidays { country }`                  | the requested year range has no data for the country                  |
+| `StartAfterEnd { start, end }`            | `business_days_between` called with `start > end`                     |
+| `RangeNotCovered { start, end, covered }` | a `business_days_between` range is not fully within `covered_years()` |
+| `DateNotCovered { date, covered }`        | a date or an add/subtract/roll result is outside `covered_years()`    |
+| `DateOverflow`                            | date arithmetic overflowed `NaiveDate`                                |
+| `UnknownCountryCode(String)`              | parsing an unknown country code                                       |
+| `InvalidDate { year, month, day }`        | invalid year/month/day                                                |
+
+`business_days_until_today` returns `RangeNotCovered` once "today" (local time) is past the last covered year.
 
 ## Regenerating the data
 
@@ -81,6 +141,8 @@ cargo run -p builder -- --help             # print help with all possible argume
 Run `--force` once a year to pick up the next future year and any upstream corrections, then review the diff and commit.
 
 ## Need a different year range?
+
+Narrowing the range needs no regeneration - `Calendar::with_years` (see Usage) is enough.
 
 The published crate only embeds years 2000 through current year + 5. That range is baked in at build time by `builder`, so a crate consuming `business_chrono` from crates.io can't extend it just by calling `build()` with a wider range - years outside the embedded window simply return no data.
 
@@ -103,3 +165,7 @@ If you need years the published release doesn't cover, regenerate the data yours
 4. Build your app as usual. `path`/`git` dependencies are compiled from source, so your app picks up the regenerated `src/data/` rather than whatever was last published.
 
 Since step 3 points at a directory instead of a registry version, `cargo` picks up any further changes you make there the next time you build - no need to bump a version or republish anything to iterate locally.
+
+## License
+
+MIT - see [LICENSE](LICENSE).
